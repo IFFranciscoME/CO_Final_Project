@@ -45,39 +45,20 @@ ohlc = vs.g_ohlc(p_ohlc=datos, p_theme=p_theme, p_dims=p_dims, p_vlines=p_vlines
 # tabla de descripcion de datos
 datos.describe()
 
-# --------------------------------------------------------------- ingenieria de variables autoregresivas -- #
-# --------------------------------------------------------------- -------------------------------------- -- #
+# ------------------------------------------------------------------------ Division en K-Folds mensuales -- #
+# ------------------------------------------------------------------------ ----------------------------- -- #
 
-# funcion para generar variables autoregresivas
-datos_arf = fn.f_autoregressive_features(p_data=datos, p_nmax=30)
+# -- Division de periodos de datos, sin filtracion, en amplitudes de 1 mes para obtener 36 "Folds".
+m_folds = fn.f_m_folds(p_data=[])
 
-# Visualizacion: head del DataFrame
-datos_arf.head(5)
+# ------------------------------------------------------------------ Seleccion y Optimizacion Simultanea -- #
+# ------------------------------------------------------------------ ----------------------------------- -- #
 
-# --------------------------------------------------------------------- ingenieria de variables hadamard -- #
-# --------------------------------------------------------------------- -------------------------------- -- #
+# -- m_folds results of feature engineering/selection & Hyperparameter Optimization processes
+m_folds_results = fn.f_FeatureModelOptimizer
 
-# funcion para generar variables con producto hadamard
-datos_had = fn.f_hadamard_features(p_data=datos_arf, p_nmax=29)
+# ----------------------------------------------------------------------------- M_Folds Results Analysis -- #
+# ----------------------------------------------------------------------------- ------------------------ -- #
 
-# Visualizacion: head del DataFrame
-datos_had.head(5)
-
-# ------------------------------------------------------------------- ingenieria de variables simbolicas -- #
-# ------------------------------------------------------------------- ---------------------------------- -- #
-
-# Lista de operaciones simbolicas
-fun_sym = fn.symbolic_features(p_x=datos_had.iloc[:, 3:], p_y=datos_had.iloc[:, 2])
-
-# variables
-datos_sym = fun_sym['data']
-datos_sym.columns = ['sym_' + str(i) for i in range(0, len(fun_sym['data'].iloc[0, :]))]
-
-# ecuaciones de todas las variables
-equaciones = [i.__str__() for i in list(fun_sym['model'])]
-
-# ------------------------------------------------------------------------------------ ELASTIC NET MODEL -- #
-# ------------------------------------------------------------------------------------ ----------------- -- #
-
-# model 1 result
-model_1 = fn.Elastic_Net(p_data=0, p_params=0)
+# ------------------------------------------------------------------------ M_Folds Results Visualization -- #
+# ----------------------------------------------------------------------------- ------------------------ -- #

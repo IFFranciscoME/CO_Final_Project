@@ -65,6 +65,14 @@ def f_transformacion(p_datos, p_trans):
     return p_datos
 
 
+# ------------------------------------------------------- FUNCTION: Divide the data in M-Folds (montlhy) -- #
+# ------------------------------------------------------- ------------------------------------------------- #
+
+def f_m_folds(p_data):
+
+    return 1
+
+
 # ------------------------------------------------------------------------------ Autoregressive Features -- #
 # --------------------------------------------------------------------------------------------------------- #
 
@@ -304,3 +312,58 @@ def Elastic_Net(p_data, p_params):
                                'coef': enetreg.coef_}}
 
     return r_models
+
+
+# --------------------------------------------------------- MODEL: Least Squares Support Vector Machines -- #
+# --------------------------------------------------------------------------------------------------------- #
+
+def f_SVM(p_data):
+
+
+    return 1
+
+
+# ----------------------- FUNCTION: Simultaneous Feature Engieering/Selection & Hyperparameter Optimizer -- #
+# ------------------------------------------------------- ------------------------------------------------- #
+
+def f_FeatureModelOptimizer(p_data):
+
+    # ----------------------------------------------------------- ingenieria de variables autoregresivas -- #
+    # ----------------------------------------------------------- -------------------------------------- -- #
+
+    # funcion para generar variables autoregresivas
+    datos_arf = f_autoregressive_features(p_data=datos, p_nmax=7)
+
+    # Visualizacion: head del DataFrame
+    datos_arf.head(5)
+
+    # ----------------------------------------------------------------- ingenieria de variables hadamard -- #
+    # ----------------------------------------------------------------- -------------------------------- -- #
+
+    # funcion para generar variables con producto hadamard
+    datos_had = f_hadamard_features(p_data=datos_arf, p_nmax=29)
+
+    # Visualizacion: head del DataFrame
+    datos_had.head(5)
+
+    # --------------------------------------------------------------- ingenieria de variables simbolicas -- #
+    # --------------------------------------------------------------- ---------------------------------- -- #
+
+    # Lista de operaciones simbolicas
+    fun_sym = symbolic_features(p_x=datos_had.iloc[:, 3:], p_y=datos_had.iloc[:, 2])
+
+    # variables
+    datos_sym = fun_sym['data']
+    datos_sym.columns = ['sym_' + str(i) for i in range(0, len(fun_sym['data'].iloc[0, :]))]
+
+    # ecuaciones de todas las variables
+    equaciones = [i.__str__() for i in list(fun_sym['model'])]
+
+    # -- Para cada K Fold:
+    # -- -- Hacer proceso de ing de variables (autoregresivas (1 semana max resagos), hadamard, simbolicas)
+    # -- -- Dividir datos 80-20
+    # -- -- Hacer proceso de seleccion de variables y optimizacion de hiperparametros con el 80 y GP
+    # -- -- Hacer prediccion con el 20
+    # -- -- Obtener metricas de desempeño del modelo
+
+    return 1
