@@ -104,19 +104,19 @@ model_data['test_y'] = ytest
 # ------------------------------------------------------------------------------------ ----------------- -- #
 
 # -- --------------------------------------------------------------------------------------- Elastic Net -- #
-# en_parameters = {'alpha': 0.7, 'ratio': .1}
-# elastic_net = fn.ols_elastic_net(p_data=model_data, p_params=en_parameters)
-#
-# # Model accuracy (in of sample)
-# in_en_acc = round((elastic_net['results']['matrix']['train'][0, 0] +
-#                    elastic_net['results']['matrix']['train'][0, 1])/len(ytrain), 4)
-#
-# print(in_en_acc)
-#
-# # Model accuracy (out of sample)
-# out_en_acc = round((elastic_net['results']['matrix']['test'][0, 0] +
-#                     elastic_net['results']['matrix']['test'][0, 1])/len(ytest), 4)
-# print(out_en_acc)
+en_parameters = {'alpha': 0.7, 'ratio': .1}
+elastic_net = fn.ols_elastic_net(p_data=model_data, p_params=en_parameters)
+
+# Model accuracy (in of sample)
+in_en_acc = round((elastic_net['results']['matrix']['train'][0, 0] +
+                   elastic_net['results']['matrix']['train'][0, 1])/len(ytrain), 4)
+
+print(in_en_acc)
+
+# Model accuracy (out of sample)
+out_en_acc = round((elastic_net['results']['matrix']['test'][0, 0] +
+                    elastic_net['results']['matrix']['test'][0, 1])/len(ytest), 4)
+print(out_en_acc)
 
 # -- --------------------------------------------------------------------------- Support Vector Machines -- #
 svm_parameters = {'kernel': 'linear', 'gamma': 'scale', 'C': 0.5}
