@@ -14,6 +14,7 @@ import functions as fn
 from data import data_train, data_test
 import visualizations as vs
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import MinMaxScaler
 
 # ----------------------------------------------------------------------------------- Data Visualization -- #
 # ----------------------------------------------------------------------------------- ------------------ -- #
@@ -103,17 +104,32 @@ model_data['test_y'] = ytest
 # ------------------------------------------------------------------------------------ ----------------- -- #
 
 # -- --------------------------------------------------------------------------------------- Elastic Net -- #
-en_parameters = {'alpha': 0.7, 'ratio': 0.7}
-elastic_net = fn.ols_elastic_net(p_data=model_data, p_params=en_parameters)
-
-# Model accuracy
-en_acc = (elastic_net['results']['matrix']['train'][0, 0] +
-          elastic_net['results']['matrix']['train'][0, 1])/len(ytrain)
+# en_parameters = {'alpha': 0.7, 'ratio': .1}
+# elastic_net = fn.ols_elastic_net(p_data=model_data, p_params=en_parameters)
+#
+# # Model accuracy (in of sample)
+# in_en_acc = round((elastic_net['results']['matrix']['train'][0, 0] +
+#                    elastic_net['results']['matrix']['train'][0, 1])/len(ytrain), 4)
+#
+# print(in_en_acc)
+#
+# # Model accuracy (out of sample)
+# out_en_acc = round((elastic_net['results']['matrix']['test'][0, 0] +
+#                     elastic_net['results']['matrix']['test'][0, 1])/len(ytest), 4)
+# print(out_en_acc)
 
 # -- --------------------------------------------------------------------------- Support Vector Machines -- #
-svm_parameters = {'kernel': 'linear', 'gamma': 1.1, 'C': 0.5}
+svm_parameters = {'kernel': 'linear', 'gamma': 'scale', 'C': 0.5}
 ls_svm = fn.ls_svm(p_data=model_data, p_params=svm_parameters)
 
-# Model accuracy
-svm_acc = (ls_svm['results']['matrix']['train'][0, 0] +
-           ls_svm['results']['matrix']['train'][0, 1])/len(ytrain)
+# Model accuracy (in sample)
+in_svm_acc = round((ls_svm['results']['matrix']['train'][0, 0] +
+                    ls_svm['results']['matrix']['train'][0, 1])/len(ytrain), 4)
+
+print(in_svm_acc)
+
+# Model accuracy (out of sample)
+out_svm_acc = round((ls_svm['results']['matrix']['test'][0, 0] +
+                     ls_svm['results']['matrix']['test'][0, 1])/len(ytest), 4)
+
+print(out_svm_acc)

@@ -220,10 +220,10 @@ def symbolic_features(p_x, p_y):
     model = SymbolicTransformer(function_set=["sub", "add", 'inv', 'mul', 'div', 'abs', 'log'],
                                 population_size=5000, hall_of_fame=100, n_components=20,
                                 generations=20, tournament_size=20,  stopping_criteria=.05,
-                                const_range=None, init_method='half and half', init_depth=(4, 12),
+                                const_range=None, init_method='half and half', init_depth=(4, 20),
                                 metric='pearson', parsimony_coefficient=0.001,
-                                p_crossover=0.4, p_subtree_mutation=0.2, p_hoist_mutation=0.1,
-                                p_point_mutation=0.3, p_point_replace=.05,
+                                p_crossover=0.5, p_subtree_mutation=0.3, p_hoist_mutation=0.1,
+                                p_point_mutation=0.1, p_point_replace=.05,
                                 verbose=1, random_state=None, n_jobs=-1, feature_names=p_x.columns,
                                 warm_start=True)
 
@@ -290,10 +290,12 @@ def ols_elastic_net(p_data, p_params):
     x_test = p_data['test_x']
     y_test = p_data['test_y']
 
+    # p_params = {'alpha': .1, 'ratio': 95}
+
     # Fit model
     en_model = ElasticNet(alpha=p_params['alpha'], l1_ratio=p_params['ratio'],
-                          max_iter=50000, fit_intercept=False, normalize=False, precompute=True,
-                          copy_X=True, tol=1e-4, warm_start=False, positive=False, random_state=123,
+                          max_iter=500000, fit_intercept=False, normalize=False, precompute=True,
+                          copy_X=True, tol=1e-3, warm_start=False, positive=False, random_state=123,
                           selection='random')
 
     # model fit
@@ -304,6 +306,8 @@ def ols_elastic_net(p_data, p_params):
     p_y_train_d = [1 if i > 0 else 0 for i in p_y_train]
     p_y_result_train = pd.DataFrame({'y_train': y_train, 'y_train_pred': p_y_train_d})
     cm_train = confusion_matrix(p_y_result_train['y_train'], p_y_result_train['y_train_pred'])
+
+    # print(cm_train)
 
     # fitted test values
     p_y_test = en_model.predict(x_test)
@@ -358,8 +362,8 @@ def ls_svm(p_data, p_params):
     # model function
     svm_model = SVC(C=p_params['C'], kernel=p_params['kernel'], gamma=p_params['gamma'],
 
-                    degree=3, coef0=0, shrinking=True, probability=False, tol=1e-3, cache_size=1000,
-                    class_weight=None, verbose=False, max_iter=-1, decision_function_shape='ovr',
+                    degree=3, shrinking=True, probability=False, tol=1e-3, cache_size=2000,
+                    class_weight=None, verbose=False, max_iter=70000, decision_function_shape='ovr',
                     break_ties=False, random_state=None)
 
     # model fit
@@ -378,6 +382,6 @@ def ls_svm(p_data, p_params):
     # Return the result of the model
     r_models = {'results': {'data': {'train': p_y_result_train, 'test': p_y_result_test},
                             'matrix': {'train': cm_train, 'test': cm_test}},
-                'model': svm_model, 'intercept': svm_model.intercept_, 'coef': svm_model.coef_}
+                'model': svm_model, 'intercept': svm_model.intercept_}
 
     return r_models
