@@ -10,20 +10,13 @@
 """
 
 import pandas as pd
-from os import listdir, path
-from os.path import isfile, join
-
 
 # ----------------------------------------------------------------------------------- Lectura de precios -- #
 # ----------------------------------------------------------------------------------- ------------------ -- #
 
-abspath_f = path.abspath('files/')
-files_f = sorted([f for f in listdir(abspath_f) if isfile(join(abspath_f, f))])
-price_data = {}
+data_train = pd.read_csv('files/MP_D_2019.csv')
+data_train['timestamp'] = pd.to_datetime(data_train['timestamp'])
 
-for file_f in files_f:
-    data_f = pd.read_csv('files/' + file_f)
-    data_f['timestamp'] = pd.to_datetime(data_f['timestamp'])
-    years_f = set([str(datadate.year) for datadate in list(data_f['timestamp'])])
-    for year_f in years_f:
-        price_data['MP_D_' + year_f] = data_f
+data_test = pd.read_csv('files/MP_D_2020.csv')
+data_test['timestamp'] = pd.to_datetime(data_test['timestamp'])
+

@@ -13,6 +13,8 @@ import pandas as pd
 from sklearn.linear_model import LinearRegression, Ridge, Lasso, ElasticNet
 from sklearn.preprocessing import StandardScaler, RobustScaler, MaxAbsScaler  # estandarizacion de variables
 from gplearn.genetic import SymbolicTransformer                               # variables simbolicas
+from sklearn.svm import SVC
+from sklearn.metrics import confusion_matrix
 
 
 # ------------------------------------------------------------------------------- transformacio de datos -- #
@@ -63,14 +65,6 @@ def f_transformacion(p_datos, p_trans):
         p_datos[list(p_datos.columns[1:])] = MaxAbsScaler().fit_transform(lista)
 
     return p_datos
-
-
-# ------------------------------------------------------- FUNCTION: Divide the data in M-Folds (montlhy) -- #
-# ------------------------------------------------------- ------------------------------------------------- #
-
-def f_m_folds(p_data):
-
-    return 1
 
 
 # ------------------------------------------------------------------------------ Autoregressive Features -- #
@@ -252,7 +246,7 @@ def symbolic_features(p_x, p_y):
 # -------------------------- MODEL: Multivariate Linear Regression Model with ELASTIC NET regularization -- #
 # --------------------------------------------------------------------------------------------------------- #
 
-def Elastic_Net(p_data, p_params):
+def ols_elastic_net(p_data, p_params):
     """
     Funcion para ajustar varios modelos lineales
     Parameters
@@ -296,20 +290,31 @@ def Elastic_Net(p_data, p_params):
     x_test = p_data['test_x']
     y_test = p_data['test_y']
 
-    p_alpha = p_params['alpha']
-    p_iter = p_params['iter']
+    # Fit model
+    en_model = ElasticNet(alpha=p_params['alpha'], l1_ratio=p_params['ratio'],
+                          max_iter=50000, fit_intercept=False, normalize=False, precompute=True,
+                          copy_X=True, tol=1e-4, warm_start=False, positive=False, random_state=123,
+                          selection='random')
 
-    # Fit ElasticNet regression
-    enetreg = ElasticNet(alpha=p_alpha, normalize=False, max_iter=p_iter, l1_ratio=0.5, fit_intercept=False)
-    enetreg.fit(x_train, y_train)
-    y_p_enet = enetreg.predict(x_test)
+    # model fit
+    en_model.fit(x_train, y_train)
+
+    # fitted train values
+    p_y_train = en_model.predict(x_train)
+    p_y_train_d = [1 if i > 0 else 0 for i in p_y_train]
+    p_y_result_train = pd.DataFrame({'y_train': y_train, 'y_train_pred': p_y_train_d})
+    cm_train = confusion_matrix(p_y_result_train['y_train'], p_y_result_train['y_train_pred'])
+
+    # fitted test values
+    p_y_test = en_model.predict(x_test)
+    p_y_test_d = [1 if i > 0 else 0 for i in p_y_test]
+    p_y_result_test = pd.DataFrame({'y_test': y_test, 'y_test_pred': p_y_test_d})
+    cm_test = confusion_matrix(p_y_result_test['y_test'], p_y_result_test['y_test_pred'])
 
     # Return the result of the model
-    r_models = {'elasticnet': {'rss': sum((y_p_enet - y_test) ** 2),
-                               'predict': y_p_enet,
-                               'model': enetreg,
-                               'intercept': enetreg.intercept_,
-                               'coef': enetreg.coef_}}
+    r_models = {'results': {'data': {'train': p_y_result_train, 'test': p_y_result_test},
+                            'matrix': {'train': cm_train, 'test': cm_test}},
+                'model': en_model, 'intercept': en_model.intercept_, 'coef': en_model.coef_}
 
     return r_models
 
@@ -317,53 +322,62 @@ def Elastic_Net(p_data, p_params):
 # --------------------------------------------------------- MODEL: Least Squares Support Vector Machines -- #
 # --------------------------------------------------------------------------------------------------------- #
 
-def f_SVM(p_data):
+def ls_svm(p_data, p_params):
+    """
+    Least Squares Support Vector Machines
 
+    Parameters
+    ----------
+    p_data
+    p_params
 
-    return 1
+    Returns
+    -------
 
+    References
+    ----------
+    https://scikit-learn.org/stable/modules/svm.html#
 
-# ----------------------- FUNCTION: Simultaneous Feature Engieering/Selection & Hyperparameter Optimizer -- #
-# ------------------------------------------------------- ------------------------------------------------- #
+    """
 
-def f_FeatureModelOptimizer(p_data):
+    x_train = p_data['train_x']
+    y_train = p_data['train_y']
 
-    # ----------------------------------------------------------- ingenieria de variables autoregresivas -- #
-    # ----------------------------------------------------------- -------------------------------------- -- #
+    x_test = p_data['test_x']
+    y_test = p_data['test_y']
 
-    # funcion para generar variables autoregresivas
-    datos_arf = f_autoregressive_features(p_data=datos, p_nmax=7)
+    # ------------------------------------------------------------------------------ FUNCTION PARAMETERS -- #
+    # model hyperparameters
+    # C, kernel, degree (if kernel = poly), gamma (if kernel = {rbf, poly, sigmoid},
+    # coef0 (if kernel = {poly, sigmoid})
 
-    # Visualizacion: head del DataFrame
-    datos_arf.head(5)
+    # computations parameters
+    # shrinking, probability, tol, cache_size, class_weight, verbose, max_iter, decision_function_shape,
+    # break_ties, random_state
 
-    # ----------------------------------------------------------------- ingenieria de variables hadamard -- #
-    # ----------------------------------------------------------------- -------------------------------- -- #
+    # model function
+    svm_model = SVC(C=p_params['C'], kernel=p_params['kernel'], gamma=p_params['gamma'],
 
-    # funcion para generar variables con producto hadamard
-    datos_had = f_hadamard_features(p_data=datos_arf, p_nmax=29)
+                    degree=3, coef0=0, shrinking=True, probability=False, tol=1e-3, cache_size=1000,
+                    class_weight=None, verbose=False, max_iter=-1, decision_function_shape='ovr',
+                    break_ties=False, random_state=None)
 
-    # Visualizacion: head del DataFrame
-    datos_had.head(5)
+    # model fit
+    svm_model.fit(x_train, y_train)
 
-    # --------------------------------------------------------------- ingenieria de variables simbolicas -- #
-    # --------------------------------------------------------------- ---------------------------------- -- #
+    # fitted train values
+    p_y_train_d = svm_model.predict(x_train)
+    p_y_result_train = pd.DataFrame({'y_train': y_train, 'y_train_pred': p_y_train_d})
+    cm_train = confusion_matrix(p_y_result_train['y_train'], p_y_result_train['y_train_pred'])
 
-    # Lista de operaciones simbolicas
-    fun_sym = symbolic_features(p_x=datos_had.iloc[:, 3:], p_y=datos_had.iloc[:, 2])
+    # fitted test values
+    p_y_test_d = svm_model.predict(x_test)
+    p_y_result_test = pd.DataFrame({'y_test': y_test, 'y_test_pred': p_y_test_d})
+    cm_test = confusion_matrix(p_y_result_test['y_test'], p_y_result_test['y_test_pred'])
 
-    # variables
-    datos_sym = fun_sym['data']
-    datos_sym.columns = ['sym_' + str(i) for i in range(0, len(fun_sym['data'].iloc[0, :]))]
+    # Return the result of the model
+    r_models = {'results': {'data': {'train': p_y_result_train, 'test': p_y_result_test},
+                            'matrix': {'train': cm_train, 'test': cm_test}},
+                'model': svm_model, 'intercept': svm_model.intercept_, 'coef': svm_model.coef_}
 
-    # ecuaciones de todas las variables
-    equaciones = [i.__str__() for i in list(fun_sym['model'])]
-
-    # -- Para cada K Fold:
-    # -- -- Hacer proceso de ing de variables (autoregresivas (1 semana max resagos), hadamard, simbolicas)
-    # -- -- Dividir datos 80-20
-    # -- -- Hacer proceso de seleccion de variables y optimizacion de hiperparametros con el 80 y GP
-    # -- -- Hacer prediccion con el 20
-    # -- -- Obtener metricas de desempeño del modelo
-
-    return 1
+    return r_models
