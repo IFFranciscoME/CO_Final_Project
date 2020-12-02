@@ -11,10 +11,10 @@
 
 import pandas as pd
 from sklearn.linear_model import ElasticNet
+from sklearn.metrics import confusion_matrix, accuracy_score, roc_auc_score, roc_curve
 from sklearn.preprocessing import StandardScaler, RobustScaler, MaxAbsScaler  # estandarizacion de variables
 from gplearn.genetic import SymbolicTransformer                               # variables simbolicas
 from sklearn.svm import SVC
-from sklearn.metrics import confusion_matrix
 
 
 # -------------------------------------------------------------------------- Data Scaling/Transformation -- #
@@ -305,20 +305,43 @@ def ols_elastic_net(p_data, p_params):
     p_y_train = en_model.predict(x_train)
     p_y_train_d = [1 if i > 0 else 0 for i in p_y_train]
     p_y_result_train = pd.DataFrame({'y_train': y_train, 'y_train_pred': p_y_train_d})
-    cm_train = confusion_matrix(p_y_result_train['y_train'], p_y_result_train['y_train_pred'])
 
-    # print(cm_train)
+    # Confussion matrix
+    cm_train = confusion_matrix(p_y_result_train['y_train'], p_y_result_train['y_train_pred'])
+    # Probabilities of class in train data
+    probs_train = [0]*len(x_train)
+
+    # Accuracy rate
+    acc_train = accuracy_score(list(y_train), p_y_train_d)
+    # False Positive Rate, True Positive Rate, Thresholds
+    fpr_train, tpr_train, thresholds_train = roc_curve(list(y_train), probs_train, pos_label=1)
+    # Area Under the Curve (ROC) for train data
+    auc_train = roc_auc_score(list(y_train), probs_train)
 
     # fitted test values
     p_y_test = en_model.predict(x_test)
     p_y_test_d = [1 if i > 0 else 0 for i in p_y_test]
     p_y_result_test = pd.DataFrame({'y_test': y_test, 'y_test_pred': p_y_test_d})
     cm_test = confusion_matrix(p_y_result_test['y_test'], p_y_result_test['y_test_pred'])
+    # Probabilities of class in test data
+    probs_test = [0]*len(x_test)
+
+    # Accuracy rate
+    acc_test = accuracy_score(list(y_test), p_y_test_d)
+    # False Positive Rate, True Positive Rate, Thresholds
+    fpr_test, tpr_test, thresholds_test = roc_curve(list(y_test), probs_test, pos_label=1)
+    # Area Under the Curve (ROC) for train data
+    auc_test = roc_auc_score(list(y_test), probs_test)
 
     # Return the result of the model
     r_models = {'results': {'data': {'train': p_y_result_train, 'test': p_y_result_test},
                             'matrix': {'train': cm_train, 'test': cm_test}},
-                'model': en_model, 'intercept': en_model.intercept_, 'coef': en_model.coef_}
+                'model': en_model, 'intercept': en_model.intercept_, 'coef': en_model.coef_,
+                'metrics': {'train': {'acc': acc_train, 'tpr': tpr_train, 'fpr': fpr_train,
+                                      'probs': probs_train, 'auc': auc_train},
+                            'test': {'acc': acc_test, 'tpr': tpr_test, 'fpr': fpr_test,
+                                     'probs': probs_test, 'auc': auc_test}},
+                'params': p_params}
 
     return r_models
 
@@ -360,10 +383,10 @@ def ls_svm(p_data, p_params):
     # break_ties, random_state
 
     # model function
-    svm_model = SVC(C=p_params['C'], kernel=p_params['kernel'], gamma=p_params['gamma'],
+    svm_model = SVC(C=p_params['c'], kernel=p_params['kernel'], gamma=p_params['gamma'],
 
-                    degree=3, shrinking=True, probability=False, tol=1e-3, cache_size=2000,
-                    class_weight=None, verbose=False, max_iter=70000, decision_function_shape='ovr',
+                    shrinking=True, probability=True, tol=1e-5, cache_size=4000,
+                    class_weight=None, verbose=False, max_iter=100000, decision_function_shape='ovr',
                     break_ties=False, random_state=None)
 
     # model fit
@@ -373,16 +396,39 @@ def ls_svm(p_data, p_params):
     p_y_train_d = svm_model.predict(x_train)
     p_y_result_train = pd.DataFrame({'y_train': y_train, 'y_train_pred': p_y_train_d})
     cm_train = confusion_matrix(p_y_result_train['y_train'], p_y_result_train['y_train_pred'])
+    # Probabilities of class in train data
+    probs_train = svm_model.predict_proba(x_train)
+
+    # Accuracy rate
+    acc_train = accuracy_score(list(y_train), p_y_train_d)
+    # False Positive Rate, True Positive Rate, Thresholds
+    fpr_train, tpr_train, thresholds_train = roc_curve(list(y_train), probs_train[:, 1], pos_label=1)
+    # Area Under the Curve (ROC) for train data
+    auc_train = roc_auc_score(list(y_train), probs_train[:, 1])
 
     # fitted test values
     p_y_test_d = svm_model.predict(x_test)
     p_y_result_test = pd.DataFrame({'y_test': y_test, 'y_test_pred': p_y_test_d})
     cm_test = confusion_matrix(p_y_result_test['y_test'], p_y_result_test['y_test_pred'])
+    # Probabilities of class in test data
+    probs_test = svm_model.predict_proba(x_test)
+
+    # Accuracy rate
+    acc_test = accuracy_score(list(y_test), p_y_test_d)
+    # False Positive Rate, True Positive Rate, Thresholds
+    fpr_test, tpr_test, thresholds_test = roc_curve(list(y_test), probs_test[:, 1], pos_label=1)
+    # Area Under the Curve (ROC) for train data
+    auc_test = roc_auc_score(list(y_test), probs_test[:, 1])
 
     # Return the result of the model
     r_models = {'results': {'data': {'train': p_y_result_train, 'test': p_y_result_test},
                             'matrix': {'train': cm_train, 'test': cm_test}},
-                'model': svm_model, 'intercept': svm_model.intercept_}
+                'model': svm_model,
+                'metrics': {'train': {'acc': acc_train, 'tpr': tpr_train, 'fpr': fpr_train,
+                                      'probs': probs_train, 'auc': auc_train},
+                            'test': {'acc': acc_test, 'tpr': tpr_test, 'fpr': fpr_test,
+                                     'probs': probs_test, 'auc': auc_test}},
+                'params': p_params}
 
     return r_models
 

@@ -115,32 +115,25 @@ model_data['test_y'] = ytest
 # ------------------------------------------------------------------------------------ ----------------- -- #
 
 # -- --------------------------------------------------------------------------------------- Elastic Net -- #
-en_parameters = {'alpha': 0.7, 'ratio': .1}
+en_parameters = {'alpha': 0.1, 'ratio': .9}
 elastic_net = fn.ols_elastic_net(p_data=model_data, p_params=en_parameters)
 
 # Model accuracy (in of sample)
-in_en_acc = round((elastic_net['results']['matrix']['train'][0, 0] +
-                   elastic_net['results']['matrix']['train'][0, 1])/len(ytrain), 4)
-
+in_en_acc = elastic_net['metrics']['train']['acc']
 print(in_en_acc)
 
 # Model accuracy (out of sample)
-out_en_acc = round((elastic_net['results']['matrix']['test'][0, 0] +
-                    elastic_net['results']['matrix']['test'][0, 1])/len(ytest), 4)
+out_en_acc = elastic_net['metrics']['test']['acc']
 print(out_en_acc)
 
 # -- --------------------------------------------------------------------------- Support Vector Machines -- #
-svm_parameters = {'kernel': 'linear', 'gamma': 'scale', 'C': 0.1}
+svm_parameters = {'kernel': 'linear', 'gamma': 'auto', 'c': 0.1}
 ls_svm = fn.ls_svm(p_data=model_data, p_params=svm_parameters)
 
 # Model accuracy (in sample)
-in_svm_acc = round((ls_svm['results']['matrix']['train'][0, 0] +
-                    ls_svm['results']['matrix']['train'][0, 1])/len(ytrain), 4)
-
+in_svm_acc = ls_svm['metrics']['train']['acc']
 print(in_svm_acc)
 
 # Model accuracy (out of sample)
-out_svm_acc = round((ls_svm['results']['matrix']['test'][0, 0] +
-                     ls_svm['results']['matrix']['test'][0, 1])/len(ytest), 4)
-
+out_svm_acc = ls_svm['metrics']['test']['acc']
 print(out_svm_acc)
