@@ -11,44 +11,41 @@
 
 import pandas as pd
 import functions as fn
-from data import data_train, data_test
+import data as dt
 import visualizations as vs
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler
-
-# ----------------------------------------------------------------------------------- Data Visualization -- #
-# ----------------------------------------------------------------------------------- ------------------ -- #
-
-# grafica OHLC
-p_theme = {'color_1': '#ABABAB', 'color_2': '#ABABAB', 'color_3': '#ABABAB', 'font_color_1': '#ABABAB',
-           'font_size_1': 12, 'font_size_2': 16}
-p_dims = {'width': 1450, 'height': 800}
-p_vlines = [data_train['timestamp'].head(1), data_train['timestamp'].tail(1)]
-p_labels = {'title': 'Main title', 'x_title': 'x axis title', 'y_title': 'y axis title'}
-
-# cargar funcion importada desde GIST de visualizaciones
-ohlc_train = vs.g_ohlc(p_ohlc=data_train, p_theme=p_theme, p_dims=p_dims,
-                       p_vlines=p_vlines, p_labels=p_labels)
-
-# grafica OHLC
-p_theme = {'color_1': '#ABABAB', 'color_2': '#ABABAB', 'color_3': '#ABABAB', 'font_color_1': '#ABABAB',
-           'font_size_1': 12, 'font_size_2': 16}
-p_dims = {'width': 1450, 'height': 800}
-p_vlines = [data_test['timestamp'].head(1), data_test['timestamp'].tail(1)]
-p_labels = {'title': 'Main title', 'x_title': 'x axis title', 'y_title': 'y axis title'}
-
-# cargar funcion importada desde GIST de visualizaciones
-ohlc_test = vs.g_ohlc(p_ohlc=data_test, p_theme=p_theme, p_dims=p_dims,
-                      p_vlines=p_vlines, p_labels=p_labels)
+import warnings
+warnings.filterwarnings("ignore")
 
 # ------------------------------------------------------------------------- Exploratory Data Description -- #
 # ------------------------------------------------------------------------- ---------------------------- -- #
 
-# tabla de descripcion de datos
-data_train.describe()
+# data description
+table_1 = dt.ohlc_data.describe()
 
-# tabla de descripcion de datos
-data_test.describe()
+# general data
+data_ohlc = dt.ohlc_data.copy()
+
+# -- ------------------------------------------------------------------------- Train and Test Data Folds -- #
+# -- ------------------------------------------------------------------------- ------------------------- -- #
+
+# training data set
+train_ohlc = dt.ohlc_data.copy().iloc[0:932, :]
+
+# testing data set
+test_ohlc = dt.ohlc_data.copy().iloc[932:-1, :]
+
+# -- ----------------------------------------------------------------- PLOT 2: Time Series Block T-Folds -- #
+# -- ----------------------------------------------------------------- --------------------------------- -- #
+
+# dates for every fold in order to construct the 2nd plot
+dates_folds = [train_ohlc.iloc[-1, 0]]
+
+# Similar to plot_1 but with vertical lines for data division
+plot_1 = vs.g_ohlc(p_ohlc=dt.ohlc_data, p_theme=dt.theme_plot_2, p_vlines=dates_folds)
+
+# show plot in explorer
+# plot_1.show()
 
 # --------------------------------------------------------------------------------- Feature Engineering -- #
 # --------------------------------------------------------------------------------- -------------------- -- #
@@ -58,7 +55,7 @@ data_test.describe()
 p_memory = 7
 
 # Data with autoregressive variables
-data_ar = fn.f_autoregressive_features(p_data=data_train, p_nmax=p_memory)
+data_ar = fn.f_autoregressive_features(p_data=data_ohlc, p_nmax=p_memory)
 
 # Dependent variable (Y) separation
 data_y = data_ar['co_d'].copy()
@@ -74,25 +71,39 @@ data_ar = data_ar.drop(['timestamp', 'co', 'co_d'], axis=1, inplace=False)
 data_had = fn.f_hadamard_features(p_data=data_ar, p_nmax=p_memory)
 
 # -- -------------------------------------------------------------------------------- Symbolic Variables -- #
-# Lista de operaciones simbolicas
-fun_sym = fn.symbolic_features(p_x=data_had, p_y=data_y)
 
-# variables
-data_sym = fun_sym['data']
-data_sym.columns = ['sym_' + str(i) for i in range(0, len(fun_sym['data'].iloc[0, :]))]
+# -- ------------------------------------------------------------------------------------ Generated Data -- #
 
-# ecuaciones de todas las variables
-equations = [i.__str__() for i in list(fun_sym['model'])]
+# # Symbolic features generator
+# fun_sym = fn.symbolic_features(p_x=data_had, p_y=data_y)
+#
+# # variables
+# data_sym = fun_sym['data']
+# data_sym.columns = ['sym_' + str(i) for i in range(0, len(fun_sym['data'].iloc[0, :]))]
+#
+# # symbolic expressions (equations) for the generated variables
+# eq_sym = [i.__str__() for i in list(fun_sym['model'])]
+#
+# # save founded symbolic features
+# dt.data_save_load(p_data_objects={'features': data_sym, 'equations': eq_sym},
+#                   p_data_action='save', p_data_file='files/oc_symbolic_features.dat')
+
+# -- -------------------------------------------------------------------- Load Previously Generated Data -- #
+# Load previously generated variables (for reproducibility purposes)
+data_sym = dt.data_save_load(p_data_objects=None, p_data_action='load',
+                             p_data_file='oc_symbolic_features.dat')
 
 # ----------------------------------------------------------------------------------- Data Concatenation -- #
 # ----------------------------------------------------------------------------------- ------------------ -- #
 
 # datos para utilizar en la siguiente etapa
-data = pd.concat([data_ar.copy(), data_had.copy(), data_sym.copy()], axis=1)
+data = pd.concat([data_ar.copy(), data_had.copy(), data_sym['features'].copy()], axis=1)
+
+# model data
+model_data = dict()
 
 # Whole data separation for train and test
 xtrain, xtest, ytrain, ytest = train_test_split(data, data_y, test_size=.2, shuffle=False)
-model_data = dict()
 
 # Data vision inside the dictionary
 model_data['train_x'] = xtrain
@@ -119,7 +130,7 @@ out_en_acc = round((elastic_net['results']['matrix']['test'][0, 0] +
 print(out_en_acc)
 
 # -- --------------------------------------------------------------------------- Support Vector Machines -- #
-svm_parameters = {'kernel': 'linear', 'gamma': 'scale', 'C': 0.5}
+svm_parameters = {'kernel': 'linear', 'gamma': 'scale', 'C': 0.1}
 ls_svm = fn.ls_svm(p_data=model_data, p_params=svm_parameters)
 
 # Model accuracy (in sample)

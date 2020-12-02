@@ -10,17 +10,17 @@
 """
 
 import pandas as pd
-from sklearn.linear_model import LinearRegression, Ridge, Lasso, ElasticNet
+from sklearn.linear_model import ElasticNet
 from sklearn.preprocessing import StandardScaler, RobustScaler, MaxAbsScaler  # estandarizacion de variables
 from gplearn.genetic import SymbolicTransformer                               # variables simbolicas
 from sklearn.svm import SVC
 from sklearn.metrics import confusion_matrix
 
 
-# ------------------------------------------------------------------------------- transformacio de datos -- #
-# --------------------------------------------------------------------------------- -------------------- -- #
+# -------------------------------------------------------------------------- Data Scaling/Transformation -- #
+# -------------------------------------------------------------------------- --------------------------- -- #
 
-def f_transformacion(p_datos, p_trans):
+def data_scaler(p_data, p_trans):
     """
     Estandarizar (a cada dato se le resta la media y se divide entre la desviacion estandar) se aplica a
     todas excepto la primera columna del dataframe que se use a la entrada
@@ -31,7 +31,7 @@ def f_transformacion(p_datos, p_trans):
         Standard: Para estandarizacion (restar media y dividir entre desviacion estandar)
         Robust: Para estandarizacion robusta (restar mediana y dividir entre rango intercuartilico)
 
-    p_datos: pd.DataFrame
+    p_data: pd.DataFrame
         Con datos numericos de entrada
 
     Returns
@@ -44,27 +44,27 @@ def f_transformacion(p_datos, p_trans):
     if p_trans == 'Standard':
 
         # estandarizacion de todas las variables independientes
-        lista = p_datos[list(p_datos.columns[1:])]
+        lista = p_data[list(p_data.columns[1:])]
 
         # armar objeto de salida
-        p_datos[list(p_datos.columns[1:])] = StandardScaler().fit_transform(lista)
+        p_data[list(p_data.columns[1:])] = StandardScaler().fit_transform(lista)
 
     elif p_trans == 'Robust':
 
         # estandarizacion de todas las variables independientes
-        lista = p_datos[list(p_datos.columns[1:])]
+        lista = p_data[list(p_data.columns[1:])]
 
         # armar objeto de salida
-        p_datos[list(p_datos.columns[1:])] = RobustScaler().fit_transform(lista)
+        p_data[list(p_data.columns[1:])] = RobustScaler().fit_transform(lista)
 
     elif p_trans == 'Scale':
 
         # estandarizacion de todas las variables independientes
-        lista = p_datos[list(p_datos.columns[1:])]
+        lista = p_data[list(p_data.columns[1:])]
 
-        p_datos[list(p_datos.columns[1:])] = MaxAbsScaler().fit_transform(lista)
+        p_data[list(p_data.columns[1:])] = MaxAbsScaler().fit_transform(lista)
 
-    return p_datos
+    return p_data
 
 
 # ------------------------------------------------------------------------------ Autoregressive Features -- #
@@ -218,12 +218,12 @@ def symbolic_features(p_x, p_y):
 
     # funcion de generacion de variables simbolicas
     model = SymbolicTransformer(function_set=["sub", "add", 'inv', 'mul', 'div', 'abs', 'log'],
-                                population_size=5000, hall_of_fame=100, n_components=20,
-                                generations=20, tournament_size=20,  stopping_criteria=.05,
+                                population_size=800, hall_of_fame=50, n_components=20,
+                                generations=15, tournament_size=30,  stopping_criteria=.65,
                                 const_range=None, init_method='half and half', init_depth=(4, 20),
                                 metric='pearson', parsimony_coefficient=0.001,
-                                p_crossover=0.5, p_subtree_mutation=0.3, p_hoist_mutation=0.1,
-                                p_point_mutation=0.1, p_point_replace=.05,
+                                p_crossover=0.4, p_subtree_mutation=0.3, p_hoist_mutation=0.1,
+                                p_point_mutation=0.2, p_point_replace=.2,
                                 verbose=1, random_state=None, n_jobs=-1, feature_names=p_x.columns,
                                 warm_start=True)
 
@@ -294,7 +294,7 @@ def ols_elastic_net(p_data, p_params):
 
     # Fit model
     en_model = ElasticNet(alpha=p_params['alpha'], l1_ratio=p_params['ratio'],
-                          max_iter=500000, fit_intercept=False, normalize=False, precompute=True,
+                          max_iter=100000, fit_intercept=False, normalize=False, precompute=True,
                           copy_X=True, tol=1e-3, warm_start=False, positive=False, random_state=123,
                           selection='random')
 
@@ -385,3 +385,86 @@ def ls_svm(p_data, p_params):
                 'model': svm_model, 'intercept': svm_model.intercept_}
 
     return r_models
+
+
+# --------------------------------------------------------------------------- Divide the data in T-Folds -- #
+# --------------------------------------------------------------------------- ----------------------------- #
+
+def t_folds(p_data, p_period):
+    """
+    Function to separate in T-Folds the data, considering not having filtrations (Month and Quarter)
+
+    Parameters
+    ----------
+    p_data : pd.DataFrame
+        DataFrame with data
+
+    p_period : str
+        'month': monthly data division
+        'quarter' quarterly data division
+
+    Returns
+    -------
+    m_data or q_data : 'period_'
+
+    References
+    ----------
+    https://web.stanford.edu/~hastie/ElemStatLearn/
+
+    """
+
+    # data scaling by standarization
+    p_data.iloc[:, 1:] = data_scaler(p_data=p_data.copy(), p_trans='Standard')
+
+    # For monthly separation of the data
+    if p_period == 'month':
+        # List of months in the dataset
+        months = list(set(time.month for time in list(p_data['timestamp'])))
+        # List of years in the dataset
+        years = list(set(time.year for time in list(p_data['timestamp'])))
+        m_data = {}
+        # New key for every month_year
+        for j in years:
+            m_data.update({'m_' + str('0') + str(i) + '_' + str(j) if i <= 9 else str(i) + '_' + str(j):
+                               p_data[(pd.to_datetime(p_data['timestamp']).dt.month == i) &
+                                      (pd.to_datetime(p_data['timestamp']).dt.year == j)]
+                           for i in months})
+        return m_data
+
+    # For quarterly separation of the data
+    elif p_period == 'quarter':
+        # List of quarters in the dataset
+        quarters = list(set(time.quarter for time in list(p_data['timestamp'])))
+        # List of years in the dataset
+        years = set(time.year for time in list(p_data['timestamp']))
+        q_data = {}
+        # New key for every quarter_year
+        for y in sorted(list(years)):
+            q_data.update({'q_' + str('0') + str(i) + '_' + str(y) if i <= 9 else str(i) + '_' + str(y):
+                               p_data[(pd.to_datetime(p_data['timestamp']).dt.year == y) &
+                                      (pd.to_datetime(p_data['timestamp']).dt.quarter == i)]
+                           for i in quarters})
+        return q_data
+
+    # For quarterly separation of the data
+    elif p_period == 'semester':
+        # List of years in the dataset
+        years = set(time.year for time in list(p_data['timestamp']))
+        s_data = {}
+        # New key for every quarter_year
+        for y in sorted(list(years)):
+            # y = sorted(list(years))[0]
+            s_data.update({'s_' + str('0') + str(1) + '_' + str(y):
+                               p_data[(pd.to_datetime(p_data['timestamp']).dt.year == y) &
+                                      ((pd.to_datetime(p_data['timestamp']).dt.quarter == 1) |
+                                      (pd.to_datetime(p_data['timestamp']).dt.quarter == 2))]})
+
+            s_data.update({'s_' + str('0') + str(2) + '_' + str(y):
+                               p_data[(pd.to_datetime(p_data['timestamp']).dt.year == y) &
+                                      ((pd.to_datetime(p_data['timestamp']).dt.quarter == 3) |
+                                       (pd.to_datetime(p_data['timestamp']).dt.quarter == 4))]})
+
+        return s_data
+
+    # In the case a different label has been receieved
+    return 'Error: verify parameters'
