@@ -10,7 +10,7 @@
 """
 
 import pandas as pd
-from sklearn.linear_model import ElasticNet
+from sklearn.linear_model import ElasticNet, LogisticRegression
 from sklearn.metrics import confusion_matrix, accuracy_score, roc_auc_score, roc_curve
 from sklearn.preprocessing import StandardScaler, RobustScaler, MaxAbsScaler  # estandarizacion de variables
 from gplearn.genetic import SymbolicTransformer                               # variables simbolicas
@@ -105,7 +105,7 @@ def f_autoregressive_features(p_data, p_nmax):
     data['hl'] = (data['high'] - data['low']) * 10000
 
     # clase a predecir
-    data['co_d'] = [1 if i > 0 else 0 for i in list(data['co'])]
+    data['co_d'] = [1 if i > 0 else -1 for i in list(data['co'])]
 
     # ciclo para calcular N features con logica de "Ventanas de tamaño n"
     for n in range(0, p_nmax):
@@ -218,8 +218,8 @@ def symbolic_features(p_x, p_y):
 
     # funcion de generacion de variables simbolicas
     model = SymbolicTransformer(function_set=["sub", "add", 'inv', 'mul', 'div', 'abs', 'log'],
-                                population_size=800, hall_of_fame=50, n_components=20,
-                                generations=15, tournament_size=30,  stopping_criteria=.65,
+                                population_size=12000, hall_of_fame=300, n_components=30,
+                                generations=4, tournament_size=6000,  stopping_criteria=.75,
                                 const_range=None, init_method='half and half', init_depth=(4, 20),
                                 metric='pearson', parsimony_coefficient=0.001,
                                 p_crossover=0.4, p_subtree_mutation=0.3, p_hoist_mutation=0.1,
@@ -227,18 +227,31 @@ def symbolic_features(p_x, p_y):
                                 verbose=1, random_state=None, n_jobs=-1, feature_names=p_x.columns,
                                 warm_start=True)
 
-    # resultado de ajuste con la funcion SymbolicTransformer
+    # SymbolicTransformer fit
     model_fit = model.fit_transform(p_x, p_y)
 
-    # dejar en un dataframe las variables
-    data = pd.DataFrame(model_fit)
-    # data.columns = list(model.feature_names)
+    # output data of the model
+    data = pd.DataFrame(np.round(model_fit, 6))
 
-    # parametros de modelo
+    # parameters of the model
     model_params = model.get_params()
 
-    # resultados
-    results = {'fit': model_fit, 'params': model_params, 'model': model, 'data': data}
+    # best programs dataframe
+    best_programs = {}
+    for p in model._best_programs:
+        factor_name = 'sym_' + str(model._best_programs.index(p))
+        best_programs[factor_name] = {'raw_fitness': p.raw_fitness_, 'reg_fitness': p.fitness_, 
+                                      'expression': str(p), 'depth': p.depth_, 'length': p.length_}
+
+    # formatting, drop duplicates and sort by reg_fitness
+    best_programs = pd.DataFrame(best_programs).T
+    best_programs = best_programs.drop_duplicates(subset = ['expression'])
+    best_programs = best_programs.sort_values(by='reg_fitness', ascending=False)
+
+    # results
+    results = {'fit': model_fit, 'params': model_params, 'model': model, 'data': data,
+               'best_programs': best_programs, 'details': model.run_details_}
+
 
     return results
 
@@ -294,16 +307,15 @@ def ols_elastic_net(p_data, p_params):
 
     # Fit model
     en_model = ElasticNet(alpha=p_params['alpha'], l1_ratio=p_params['ratio'],
-                          max_iter=100000, fit_intercept=False, normalize=False, precompute=True,
-                          copy_X=True, tol=1e-3, warm_start=False, positive=False, random_state=123,
-                          selection='random')
+                          max_iter=200000, fit_intercept=False, 
+                          tol=1e-2, warm_start=False, random_state=123)
 
     # model fit
     en_model.fit(x_train, y_train)
 
     # fitted train values
     p_y_train = en_model.predict(x_train)
-    p_y_train_d = [1 if i > 0 else 0 for i in p_y_train]
+    p_y_train_d = [1 if i > 0 else -1 for i in p_y_train]
     p_y_result_train = pd.DataFrame({'y_train': y_train, 'y_train_pred': p_y_train_d})
 
     # Confussion matrix
@@ -320,7 +332,7 @@ def ols_elastic_net(p_data, p_params):
 
     # fitted test values
     p_y_test = en_model.predict(x_test)
-    p_y_test_d = [1 if i > 0 else 0 for i in p_y_test]
+    p_y_test_d = [1 if i > 0 else -1 for i in p_y_test]
     p_y_result_test = pd.DataFrame({'y_test': y_test, 'y_test_pred': p_y_test_d})
     cm_test = confusion_matrix(p_y_result_test['y_test'], p_y_result_test['y_test_pred'])
     # Probabilities of class in test data
@@ -349,9 +361,9 @@ def ols_elastic_net(p_data, p_params):
 # --------------------------------------------------------- MODEL: Least Squares Support Vector Machines -- #
 # --------------------------------------------------------------------------------------------------------- #
 
-def ls_svm(p_data, p_params):
+def l1_svm(p_data, p_params):
     """
-    Least Squares Support Vector Machines
+    L1 Support Vector Machines
 
     Parameters
     ----------
@@ -385,9 +397,13 @@ def ls_svm(p_data, p_params):
     # model function
     svm_model = SVC(C=p_params['c'], kernel=p_params['kernel'], gamma=p_params['gamma'],
 
+                    degree=p_params['degree'], coef0=p_params['coef0'],
                     shrinking=True, probability=True, tol=1e-5, cache_size=4000,
                     class_weight=None, verbose=False, max_iter=100000, decision_function_shape='ovr',
                     break_ties=False, random_state=None)
+    
+    # save adjusted model
+    model = svm_model
 
     # model fit
     svm_model.fit(x_train, y_train)
@@ -423,7 +439,7 @@ def ls_svm(p_data, p_params):
     # Return the result of the model
     r_models = {'results': {'data': {'train': p_y_result_train, 'test': p_y_result_test},
                             'matrix': {'train': cm_train, 'test': cm_test}},
-                'model': svm_model,
+                'model': model,
                 'metrics': {'train': {'acc': acc_train, 'tpr': tpr_train, 'fpr': fpr_train,
                                       'probs': probs_train, 'auc': auc_train},
                             'test': {'acc': acc_test, 'tpr': tpr_test, 'fpr': fpr_test,
