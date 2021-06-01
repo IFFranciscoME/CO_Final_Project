@@ -31,7 +31,7 @@ and then install dependencies
 Example Results
 ---------------
 
-.. raw:: HTML
+.. code:: html
         
         <iframe width="900" height="800" frameborder="0" scrolling="no" src="//plotly.com/~IFFranciscoME/198.embed"></iframe>
 
