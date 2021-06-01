@@ -32,7 +32,11 @@ Example Results
 ---------------
 
 .. raw:: html
-        :file: Plot198.html
+        
+        <div>
+        <a href="https://plotly.com/~IFFranciscoME/198/" target="_blank" title="Plot 198" style="display: block; text-align: center;"><img src="https://plotly.com/~IFFranciscoME/198.png" alt="Plot 198" style="max-width: 100%;width: 975px;"  width="975" onerror="this.onerror=null;this.src='https://plotly.com/404.png';" /></a>
+        <script data-plotly="IFFranciscoME:198" src="https://plotly.com/embed.js" async></script>
+        </div>
 
 ------
 Author
