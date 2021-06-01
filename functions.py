@@ -10,6 +10,7 @@
 """
 
 import pandas as pd
+import numpy as np
 from sklearn.linear_model import ElasticNet, LogisticRegression
 from sklearn.metrics import confusion_matrix, accuracy_score, roc_auc_score, roc_curve
 from sklearn.preprocessing import StandardScaler, RobustScaler, MaxAbsScaler  # estandarizacion de variables
@@ -219,11 +220,11 @@ def symbolic_features(p_x, p_y):
     # funcion de generacion de variables simbolicas
     model = SymbolicTransformer(function_set=["sub", "add", 'inv', 'mul', 'div', 'abs', 'log'],
                                 population_size=12000, hall_of_fame=300, n_components=30,
-                                generations=4, tournament_size=6000,  stopping_criteria=.75,
+                                generations=4, tournament_size=600,  stopping_criteria=.75,
                                 const_range=None, init_method='half and half', init_depth=(4, 20),
                                 metric='pearson', parsimony_coefficient=0.001,
                                 p_crossover=0.4, p_subtree_mutation=0.3, p_hoist_mutation=0.1,
-                                p_point_mutation=0.2, p_point_replace=.2,
+                                p_point_mutation=0.2, p_point_replace=0.2,
                                 verbose=1, random_state=None, n_jobs=-1, feature_names=p_x.columns,
                                 warm_start=True)
 
