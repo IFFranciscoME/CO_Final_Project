@@ -1,6 +1,6 @@
-============
-Conex-Models
-============
+=============
+Convex-Models
+=============
 
 Convex linear models, Linear Regression, Logistic Regression, and Support Vector Machines, to test convexity and performance by using non-linear endogenous features in time series data.
 
@@ -34,7 +34,7 @@ Example Results
 .. raw:: html
         
         <div>
-        <a href="https://plotly.com/~IFFranciscoME/198/" target="_blank" title="Plot 198" style="display: block; text-align: center;"><img src="https://plotly.com/~IFFranciscoME/198.png" alt="Plot 198" style="max-width: 100%;width: 975px;"  width="975" onerror="this.onerror=null;this.src='https://plotly.com/404.png';" /></a>
+        <a href="https://plotly.com/~IFFranciscoME/198/" target="_blank" title="Plot 198" style="display: block; text-align: center;"><img src="https://plotly.com/~IFFranciscoME/198.png" alt="Plot 198" style="max-width: 70%; width: 975px;"  width="975" onerror="this.onerror=null;this.src='https://plotly.com/404.png';" /></a>
         <script data-plotly="IFFranciscoME:198" src="https://plotly.com/embed.js" async></script>
         </div>
 
